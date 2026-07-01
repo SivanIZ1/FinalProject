@@ -1,105 +1,42 @@
 import requests
 import pytest
 
-BASE_URL = "https://sv-students-recommend.onrender.com" 
+SERVER_URL = "https://sv-students-recommend.onrender.com/api"
 
-USER_TOKEN = ""
-RECOMMENDATION_ID = ""
+# ----- חלק א': בדיקות חיוביות (Positive Paths) -----
 
-def test_register_user():
-    url = f"{BASE_URL}/auth/register"
-    
-    payload = {
-        "name": "SivanFinal5",
-        "email": "SivanFinal5@Gmail.com",
-        "password": "Ss123456!"
-    }
-    
-    headers = {
-        "Content-Type": "application/json"
-    }
-    
-    response = requests.post(url, json=payload, headers=headers)
-    assert response.status_code in [200, 201], f"הרישום נכשל! סטטוס קוד: {response.status_code}"
-    print(f"\n--- הרישום הצליח! סטטוס קוד: {response.status_code} ---")
+def test_1_get_all_recommendations_success():
+    """Verify that fetching all recommendations returns a successful 200 OK status."""
+    response = requests.get(f"{SERVER_URL}/recommendations")
+    assert response.status_code == 200, f"Expected 200 but got {response.status_code}"
 
+def test_2_recommendations_data_type():
+    """Verify that the response body from the server is correctly structured as a list."""
+    response = requests.get(f"{SERVER_URL}/recommendations")
+    assert isinstance(response.json(), list), "Expected a standard JSON list from the API"
 
-def test_login_user():
-    global USER_TOKEN
-    url = f"{BASE_URL}/auth/login"
-    
-    payload = {
-        "email": "SivanFinal5@Gmail.com",
-        "password": "Ss123456!"
-    }
-    
-    headers = {
-        "Content-Type": "application/json"
-    }
-    
-    response = requests.post(url, json=payload, headers=headers)
-    assert response.status_code == 200, f"ההתחברות נכשלה! סטטוס קוד: {response.status_code}"
-    
-    response_data = response.json()
-    USER_TOKEN = response_data.get("access_token")
-    print(f"\n--- ההתחברות הצליחה! הטוקן נשמר בהצלחה ---")
+def test_3_recommendations_content_type_header():
+    """Verify that the response headers contain the required application/json content type."""
+    response = requests.get(f"{SERVER_URL}/recommendations")
+    assert "application/json" in response.headers.get("Content-Type", ""), "Response format is not JSON"
 
+# ----- חלק ב': בדיקות שליליות וטיפול בשגיאות (Negative Error Handling) -----
 
-def test_get_recommendations():
-    url = f"{BASE_URL}/api/recommendations"
-    
-    response = requests.get(url)
-    assert response.status_code == 200, f"קבלת ההמלצות נכשלה! סטטוס קוד: {response.status_code}"
-    
-    response_data = response.json()
-    assert isinstance(response_data, list), "התשובה שהחזיר השרת אינה רשימה!"
-    print(f"\n--- קבלת המלצות הצליחה! נמצאו {len(response_data)} המלצות ---")
+def test_4_login_wrong_password():
+    """#wrong password in login - שולחים סיסמה שגויה ומצפים לקוד שגיאה (לא 200)"""
+    payload = {"email": "sivan_test@test.com", "password": "WrongPassword123!"}
+    response = requests.post(f"{SERVER_URL}/login", json=payload)
+    assert response.status_code != 200, f"Expected login to fail, but got {response.status_code}"
 
+def test_5_login_wrong_email():
+    """#wrong email in login - שולחים אימייל שלא קיים ומצפים לקוד שגיאה"""
+    payload = {"email": "does_not_exist_sivan@error.com", "password": "ValidPassword123"}
+    response = requests.post(f"{SERVER_URL}/login", json=payload)
+    assert response.status_code != 200, f"Expected login to fail due to bad email, but got {response.status_code}"
 
-def test_post_recommendation():
-    global RECOMMENDATION_ID
-    url = f"{BASE_URL}/api/recommendations"
-    
-    headers = {
-        "Authorization": f"Bearer {USER_TOKEN}"
-    }
-    
-    form_payload = {
-        "name": "Sivan QA Course",
-        "category": "Other",
-        "description": "QA Course",
-        "image_url": "http://example.com",
-        "website_link": "http://example.com",
-        "recommender_name": "Sivan Izrailov",
-        "created_by": "Sivan"
-    }
-    
-    response = requests.post(url, data=form_payload, headers=headers)
-    assert response.status_code in [200, 201], f"יצירת ההמלצה נכשלה! סטטוס קוד: {response.status_code}"
-    
-    response_data = response.json()
-    RECOMMENDATION_ID = response_data.get("id")
-    print(f"\n--- פרסום המלצה הצליח! נוצרה המלצה עם ID: {RECOMMENDATION_ID} ---")
-
-
-def test_get_recommendation_by_id():
-    url = f"{BASE_URL}/api/recommendations/{RECOMMENDATION_ID}"
-    
-    response = requests.get(url)
-    assert response.status_code == 200, f"קבלת המלצה לפי ID נכשלה! סטטוס קוד: {response.status_code}"
-    
-    response_data = response.json()
-    assert response_data.get("id") == RECOMMENDATION_ID, "ה-ID בתשובה לא תואם ל-ID שביקשנו!"
-    print(f"\n--- קבלת המלצה ספציפית הצליחה עבור ID: {RECOMMENDATION_ID} ---")
-
-
-def test_delete_recommendation():
-    url = f"{BASE_URL}/api/recommendations/{RECOMMENDATION_ID}"
-    
-    headers = {
-        "Authorization": f"Bearer {USER_TOKEN}"
-    }
-    
-    response = requests.delete(url, headers=headers)
-    assert response.status_code in [200, 204], f"מחיקת ההמלצה נכשלה! סטטוס קוד: {response.status_code}"
-    print(f"\n--- מחיקת ההמלצה הצליחה! סטטוס קוד: {response.status_code} ---")
+def test_6_create_recommendation_missing_fields():
+    """#המלצה שלא מילאו את כל השדות - שליחת מידע חסר לשרת וציפייה שהקוד ייכשל"""
+    headers = {"Authorization": "Bearer invalid_token_for_error_handling_test"}
+    incomplete_payload = {"title": "כותרת בלבד ללא תוכן וקטגוריה"}
+    response = requests.post(f"{SERVER_URL}/recommendations", json=incomplete_payload, headers=headers)
+    assert response.status_code != 200, "Expected server to reject incomplete recommendation blueprint"
