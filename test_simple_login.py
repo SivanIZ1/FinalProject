@@ -1,3 +1,4 @@
+@pytest.mark.sanity
 def test_simple_login(page):
     page.goto("https://practicetestautomation.com/practice-test-login/")
     page.fill("#username", "student")

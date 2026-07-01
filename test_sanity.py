@@ -14,6 +14,7 @@ PASSWORD = os.getenv("PASSWORD", "Test1234!")
 DYNAMIC_EMAIL = ""
 DYNAMIC_NAME = ""
 
+@pytest.mark.sanity
 def test_register_new_user(page: Page):
     """Registration test that generates a dynamic user and saves their credentials."""
     global DYNAMIC_EMAIL, DYNAMIC_NAME
@@ -39,6 +40,7 @@ def test_register_new_user(page: Page):
     # verificationwe are on login page
     expect(page.get_by_role("button", name="Sign In")).to_be_visible(timeout=15000)
 
+@pytest.mark.sanity
 def test_simple_login_with_new_user(page: Page):
     """Simple login test using the dynamic user that was created."""
     global DYNAMIC_EMAIL
@@ -65,11 +67,4 @@ def test_simple_login_with_new_user(page: Page):
     home_icon = page.locator("i.fas.fa-house")
     expect(home_icon).to_be_visible()
 
-
-#3.2.1 Upper toolbar: Logo & Home → Home; Help/About → popups; Store; My Profile; System (admin only); Cart (item count); Logout → Login; + Add Recommendation → form.
-#3.2.2 Footer: “© 2026 All rights reserved”, SV College link, Accessibility link.
-#reccomendation filter 
-#3.3.1 Home: list of cards; filter by All / Book / Movie / Series / Activity / Other
-#3.3.2: detail
-#3.3
 

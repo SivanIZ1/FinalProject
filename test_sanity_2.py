@@ -17,6 +17,7 @@ print(f"--- DEBUG: Did .env load successfully?: {loaded}")
 print(f"--- DEBUG: ADMIN_USER value: {os.environ.get('ADMIN_USER')}\n")
 # --------------------------
 
+@pytest.mark.sanity
 def test_see_recommendations_and_filters(logged_in_page: Page):
     """Verifies that the homepage loads recommendations and shows all category filters."""
     page = logged_in_page
@@ -31,7 +32,7 @@ def test_see_recommendations_and_filters(logged_in_page: Page):
     for category in ["All", "Book", "Movie", "Series", "Activity", "Other"]:
         expect(page.get_by_text(category, exact=True)).to_be_visible()
 
-
+@pytest.mark.sanity
 def test_add_new_recommendation(logged_in_page: Page):
     """Fills out and submits the 'Add Recommendation' form using precise data-test hooks."""
     page = logged_in_page
