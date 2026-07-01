@@ -15,8 +15,16 @@ This repository contains a comprehensive automation testing framework built for 
 ```text
 FinalProject/
 │
-├── conftest.py          # Global Pytest fixtures (Playwright browser initialization)
-├── pytest.ini           # Pytest configurations and custom marker definitions
-├── requirements.txt     # Complete list of project dependencies and libraries
-├── test_api.py          # API Testing suite covering full CRUD lifecycles & authentication
-└── test_ui.py          # UI Testing suite with 14 atomic, parameterized, and mobile tests
+├── conftest.py               # Global Pytest fixtures (Playwright initialization & shared login state)
+├── pytest.ini                # Pytest configurations and custom marker definitions (sanity, error_handling)
+├── requirements.txt          # Complete list of project dependencies and libraries
+│
+├── # --- Sivan's Core Test Suites ---
+├── test_api.py               # API Testing suite covering full CRUD lifecycles & authentication
+├── test_ui.py                # UI Testing suite with 14 atomic, parameterized, and mobile tests
+│
+└── # --- Carmit's End-to-End & Validation Suites ---
+    ├── test_sanity.py        # Core UI flow validations (Toolbar navigation and category filter verification)
+    ├── test_sanity_2.py      # Complex UI user flows (Dynamic recommendation creation, commenting, and Admin UI deletion)
+    ├── test_error_handling.py # Negative test scenarios (Invalid/malformed logins and missing mandatory form fields)
+    └── test_project_practice_1.py # Integration testing workflows and structural practice scripts
