@@ -1,3 +1,7 @@
+##==This test rely on a pre-registered static user that is already in the system.
+# Test "test_sanity.py" demonstraates login with dynamic user. We chose this because 
+# sometimes the sanity test does not require registrations, So we show both possibilities==##
+
 import os
 import re
 import time
