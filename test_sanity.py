@@ -1,5 +1,5 @@
 #sanity #1: UI register and login
-#add allthe pre-steps..
+
 import os
 import time
 from playwright.sync_api import Page, expect
