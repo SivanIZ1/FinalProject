@@ -14,6 +14,8 @@ PASSWORD = os.getenv("PASSWORD", "Test1234!")
 DYNAMIC_EMAIL = ""
 DYNAMIC_NAME = ""
 
+# --- Sanity #1: register with dynamic user and login ---
+
 @pytest.mark.sanity
 def test_register_new_user(page: Page):
     """Registration test that generates a dynamic user and saves their credentials."""

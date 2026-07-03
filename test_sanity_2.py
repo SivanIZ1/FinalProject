@@ -10,12 +10,14 @@ from playwright.sync_api import Page, expect
 env_path = Path.cwd() / '.env'
 loaded = load_dotenv(dotenv_path=env_path, override=True)
 
-# --- QUICK DEBUG PRINTS ---
+# --- DEBUG PRINTS ---
 print(f"\n--- DEBUG: Current Working Directory: {Path.cwd()}")
 print(f"--- DEBUG: Absolute Target path: {env_path.resolve()}")
 print(f"--- DEBUG: Did .env load successfully?: {loaded}")
 print(f"--- DEBUG: ADMIN_USER value: {os.environ.get('ADMIN_USER')}\n")
 # --------------------------
+
+# --- sanity #2: login and check user can see recommendations and category filters ---
 
 @pytest.mark.sanity
 def test_see_recommendations_and_filters(logged_in_page: Page):
@@ -32,12 +34,14 @@ def test_see_recommendations_and_filters(logged_in_page: Page):
     for category in ["All", "Book", "Movie", "Series", "Activity", "Other"]:
         expect(page.get_by_text(category, exact=True)).to_be_visible()
 
+# --- sanity #3: UI Add Comment ---
+
 @pytest.mark.sanity
 def test_add_new_recommendation(logged_in_page: Page):
     """Fills out and submits the 'Add Recommendation' form using precise data-test hooks."""
     page = logged_in_page
     
-    # Use of suffix to ensure test passes every time we run it 
+    # Use of suffix to ensure test passes every time we run it as each user can only sign in once. 
     unique_suffix = str(int(time.time()))[-5:]
     test_title = f"Automated Movie {unique_suffix}"
     test_desc = "greate movie for test execution."
@@ -68,7 +72,6 @@ def test_add_new_recommendation(logged_in_page: Page):
     expect(page.get_by_text(test_title)).to_be_visible(timeout=10000)
 
 
-    # --- sanity #3: UI Add Comment ---
     movie_card = page.get_by_text(test_title)
     expect(movie_card).to_be_visible(timeout=10000)
     movie_card.click()
@@ -86,6 +89,7 @@ def test_add_new_recommendation(logged_in_page: Page):
 
 
     # --- sanity 4: UI Admin Login & Deletion ---
+    """login as admin and delete the recommendation created in the previous test using the UI."""
     admin_email = os.environ.get("ADMIN_USER")
     admin_password = os.environ.get("ADMIN_PASSWORD")
 
@@ -115,8 +119,7 @@ def test_add_new_recommendation(logged_in_page: Page):
     expect(movie_card).to_be_visible(timeout=10000)
     movie_card.click()
 
-    # ==================== REPLACE THIS SECTION ====================
-    # 4. Delete the recommendation via the Admin UI action
+       # 4. Delete the recommendation via the Admin UI action 
     expect(page).to_have_url(re.compile(r".*/pages/recommendation-detail\.html.*"))
     
     # CLICK #1: Click the main page Delete button to open the confirmation box
@@ -128,8 +131,7 @@ def test_add_new_recommendation(logged_in_page: Page):
     # CLICK #2: Target and force-click the second "Delete" button inside the open box
     delete_btn = page.locator("[data-test='btn-confirm-delete']")
     delete_btn.click(force=True)
-    # ==============================================================
-
+   
     # 5. Confirm the system redirects home and the card is permanently missing
     expect(page).to_have_url(re.compile(r".*/pages/home\.html.*"), timeout=15000)
     expect(page.get_by_text(test_title)).not_to_be_visible(timeout=10000)
