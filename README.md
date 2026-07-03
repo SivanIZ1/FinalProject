@@ -8,6 +8,7 @@ This repository contains a comprehensive automation testing framework built for 
 * **UI Automation Tool:** Playwright
 * **API Testing Client:** Requests Library
 * **Version Control:** Git / GitHub
+* Assisting AI tools: Gemini
 
 ---
 
