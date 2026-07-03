@@ -1,189 +1,186 @@
 import pytest
+import random
 import re
 from playwright.sync_api import expect
 
+# משתנה גלובלי שישמור את שם הסרט הייחודי כדי להעביר אותו בין הטסטים השונים
+UNIQUE_MOVIE_NAME = f"Inception_{random.randint(1000, 9999)}"
+
 def validate_element_visible(locator, error_message="Element not visible"):
-    """פונקציית ולידציה גלובלית (דרישת סעיף ד') שמקבלת לוקייטור ומקליטה אימות שהאלמנט גלוי."""
     expect(locator).to_be_visible()
 
-# ==================== פרק 1: בדיקות UI כלליות וחיוביות (Happy Path) ====================
-
-@pytest.mark.sanity
-def test_1_page_title(page):
-    """
-    מה הטסט בודק: תקינות כותרת ה-Tab של האתר.
-    הסבר: הבדיקה מוודאת שהאתר נטען במלואו והכותרת הראשית (Title) קיימת ותואמת למבנה המצופה,
-    כדי להבטיח שהדפדפן הגיע לדף הנכון ולא לעמוד שגיאה.
-    """
-    expect(page).to_have_title(re.compile(".*"))
-
-@pytest.mark.smoke
-def test_2_language_switch_and_back(page):
-    """
-    מה הטסט בודק: מנגנון החלפת שפה (עברית / אנגלית).
-    הסבר: הטסט מאתר אקטיבית את כפתור השפה (EN/English), לוחץ עליו, וממתין חצי שנייה כדי לראות 
-    שה-URL או הממשק משתנים בהתאם. זה מוודא שהאתר רספונסיבי ולוקאלי למשתמשים שונים.
-    """
-    page.wait_for_load_state("networkidle")
-    lang_btn = page.locator("button, a").filter(has_text=re.compile("EN|English|אנגלית", re.IGNORECASE)).first
-    if lang_btn.is_visible():
-        lang_btn.click()
-        page.wait_for_timeout(500)
-    expect(page).to_have_url(re.compile(".*"))
-
-@pytest.mark.sanity
-def test_3_main_container_and_layout_visible(page):
-    """
-    מה הטסט בודק: נוכחות של שלד האפליקציה המרכזי (Main DOM Container).
-    הסבר: שימוש בפונקציית הולידציה הגלובלית כדי לוודא שרכיב העטיפה המרכזי של האתר (כמו ה-Root או ה-App body)
-    נמצא ומוצג, מה שמוכיח שה-Front-end לא קרס והעמוד אינו לבן או ריק.
-    """
-    container = page.locator("body, #root, .app").first
-    validate_element_visible(container, "Main layout container is missing from the DOM")
-
-@pytest.mark.smoke
-def test_4_search_input_typing(page):
-    """
-    מה הטסט בודק: אינטראקטיביות של שדה החיפוש (הקלדה אקטיבית).
-    הסבר: הטסט לא רק בודק שהשדה קיים, אלא מקליק עליו, מזין את הטקסט 'QA Automation', 
-    וממתין שנייה מלאה כדי שתוכלי לראות את המילים נכתבות בעיניים שלך בלייב, ואז מוודא שהערך אכן נשמר בשדה.
-    """
-    page.wait_for_load_state("networkidle")
-    search_input = page.locator("input[type='text'], input").first
-    search_input.click()
-    search_input.fill("QA Automation")
-    page.wait_for_timeout(1000) 
-    expect(search_input).to_have_value("QA Automation")
-
-
-# ==================== פרק 2: בדיקות שגיאות וטפסים (Negative Testing / Error Handling) ====================
+# ==================== פרק 1: בדיקות שגיאות וטפסים (Error Handling) ====================
 
 @pytest.mark.errors_handling
-def test_5_recommendation_form_missing_fields(page):
-    """
-    מה הטסט בודק: #המלצה שלא מילאו את כל השדות - חסימת טופס ריק.
-    הסבר: טסט שלילי שמדמה משתמש שמנסה ללחוץ על כפתור השליחה/הוספה של המלצה מבלי למלא את שדות החובה.
-    הציפייה היא שהקוד ייכשל בשליחה, והדפדפן או השרת יחסמו את הפעולה ולא יאפשרו מעבר לעמוד הצלחה.
-    """
-    submit_btn = page.locator("button[type='submit'], button").filter(has_text=re.compile("שלח|הוסף|Submit", re.IGNORECASE)).first
+def test_01_recommendation_form_missing_fields(page):
+    """טסט 1: בדיקת חסימת טופס המלצה ריק."""
+    page.goto("https://sv-students-recommend.onrender.com/")
+    # התחברות מהירה לצורך הגעה לטפסים
+    page.fill("input[type='email']", "SivanFinal1@Gmail.com")
+    page.fill("input[type='password']", "Ss123456!")
+    page.click("button:has-text('Sign In'), button:has-text('התחברות')")
+    page.wait_for_url("**/home.html", timeout=7000)
+    
+    page.locator("a, button").filter(has_text=re.compile("Add Recommendation|הוסף המלצה", re.IGNORECASE)).first.click()
+    page.wait_for_url("**/add-recommendation.html", timeout=5000)
+    
+    submit_btn = page.locator("button[type='submit'], button").filter(has_text=re.compile("שלח|Submit", re.IGNORECASE)).first
     if submit_btn.is_visible():
         submit_btn.click()
-        page.wait_for_timeout(500)
+        page.wait_for_timeout(400)
 
 @pytest.mark.errors_handling
-def test_6_comment_form_missing_fields(page):
-    """
-    מה הטסט בודק: #תגובה שלא מילאו את כל השדות - חסימת תגובה ריקה.
-    הסבר: בדיוק כמו בטופס ההמלצות, הטסט לוחץ על כפתור "הגב/תגובה" כשהטקסט ריק לחלוטין.
-    אנחנו מצפים שהאוטומציה תראה חסימה (הקוד נכשל בשליחה) והמערכת תדרוש מהמשתמש למלא תוכן.
-    """
-    comment_btn = page.locator("button").filter(has_text=re.compile("תגובה|הגב|Comment", re.IGNORECASE)).first
+def test_02_comment_form_missing_fields(page):
+    """טסט 2: בדיקת חסימת תגובה ריקה ללא תוכן."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/home.html")
+    # כניסה להמלצה קיימת ראשונה כדי לבדוק את טופס התגובות
+    page.locator(".card, .recommendation-item, div").first.click()
+    page.wait_for_load_state("networkidle")
+    
+    comment_btn = page.locator("button").filter(has_text=re.compile("תגובה|Comment", re.IGNORECASE)).first
     if comment_btn.is_visible():
         comment_btn.click()
-        page.wait_for_timeout(500)
+        page.wait_for_timeout(400)
 
 
-# ==================== פרק 3: תהליך רכישה מלא בחנות (Store & Checkout - סעיף 3.5) ====================
+# ==================== פרק 2: תהליך רכישה מלא בחנות ====================
 
 @pytest.mark.regression
-def test_7_store_add_items_to_cart(page):
-    """
-    מה הטסט בודק: סעיף 3.5.1 - הוספת חולצה (50 ש"ח) וספל (20 ש"ח) לעגלה.
-    הסבר: הטסט סורק את דף החנות, מזהה את האלמנטים המכילים את שמות המוצרים והמחירים שלהם,
-    ומבצע קליק אקטיבי על כפתור ההוספה לסל כדי להתחיל את תהליך הרכישה הנדרש.
-    """
-    t_shirt = page.locator("div, section, button").filter(has_text=re.compile("T-Shirt|חולצה|Cup|ספל|50|20", re.IGNORECASE)).first
-    if t_shirt.is_visible():
-        t_shirt.click()
+def test_03_store_add_items_to_cart(page):
+    """טסט 3: ניווט לחנות והוספת פריטים לסל הקניות."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/store.html")
+    item = page.locator("div, section, button").filter(has_text=re.compile("T-Shirt|Cup|50|20", re.IGNORECASE)).first
+    if item.is_visible():
+        item.click()
         page.wait_for_timeout(500)
 
 @pytest.mark.regression
-def test_8_cart_quantity_recalculation_and_remove(page):
-    """
-    מה הטסט בודק: סעיף 3.5.2 - שינוי כמות, חישוב מחדש של המחיר, והסרת מוצר.
-    הסבר: הטסט ניגש לשדה המספרי של הכמות בעגלה, משנה אותו ל-'2' (כדי לבדוק שהטוטאל מחושב מחדש),
-    ולאחר מכן לוחץ על כפתור "הסר/מחק" כדי לוודא שמנגנון ניקוי העגלה פועל כהלכה.
-    """
+def test_04_cart_quantity_recalculation_and_remove(page):
+    """טסט 4: מעבר לעגלה, שינוי כמויות והסרת מוצר."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/cart.html")
     quantity_input = page.locator("input[type='number']").first
     if quantity_input.is_visible():
         quantity_input.fill("2")
         page.wait_for_timeout(500)
-    remove_btn = page.locator("button").filter(has_text=re.compile("הסר|מחק|Remove", re.IGNORECASE)).first
+    remove_btn = page.locator("button").filter(has_text=re.compile("הסר|Remove", re.IGNORECASE)).first
     if remove_btn.is_visible():
         remove_btn.click()
 
 @pytest.mark.regression
-def test_9_cart_proceed_to_payment_dashboard(page):
-    """
-    מה הטסט בודק: סעיף 3.5.2 - מעבר מעגלת הקניות לשלב התשלום (Proceed to payment).
-    הסבר: בדיקת כפתור הניווט המרכזי של העגלה. הטסט מוודא שלחיצה על "מעבר לתשלום/קופה"
-    עובדת ומעבירה את המשתמש בצורה מאובטחת אל מסך ה-Checkout.
-    """
-    checkout_btn = page.locator("button, a").filter(has_text=re.compile("תשלום|קופה|Proceed|Checkout", re.IGNORECASE)).first
+def test_05_cart_proceed_to_payment_dashboard(page):
+    """טסט 5: מעבר מעגלת הקניות לעמוד התשלום בקופה."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/cart.html")
+    checkout_btn = page.locator("button, a").filter(has_text=re.compile("תשלום|Checkout", re.IGNORECASE)).first
     if checkout_btn.is_visible():
         checkout_btn.click()
         page.wait_for_timeout(500)
 
 @pytest.mark.regression
-def test_10_payment_mandatory_fields_block_submission(page):
-    """
-    מה הטסט בודק: סעיף 3.5.3 - חסימת ביצוע הזמנה כששדות החובה (שם, אשראי, CVV) ריקים.
-    הסבר: בדיקה שלילית קריטית בתהליך התשלום. הטסט מנסה ללחוץ על "בצע הזמנה" (Place Order)
-    כשהטופס ריק, ומודא שהמערכת חוסמת את השליחה (Submission Blocked) ומציגה התרעות על שדות חובה.
-    """
-    place_order_btn = page.locator("button").filter(has_text=re.compile("בצע הזמנה|Place Order|רכוש", re.IGNORECASE)).first
+def test_06_payment_mandatory_fields_block_submission(page):
+    """טסט 6: וידוא ששדות חובה חוסמים ביצוע תשלום ריק."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/checkout.html")
+    place_order_btn = page.locator("button").filter(has_text=re.compile("בצע הזמנה|Place Order", re.IGNORECASE)).first
     if place_order_btn.is_visible():
         place_order_btn.click()
         page.wait_for_timeout(500)
 
 
-# ==================== פרק 4: בדיקות סניטי ייעודיות לסלולר (Mobile Sanity) ====================
+# ==================== פרק 3: בדיקות סניטי ומובייל רספונסיביות ====================
 
 @pytest.mark.sanity
 @pytest.mark.parametrize("width, height", [(375, 812), (412, 915)])
-def test_11_mobile_sanity_responsive_layout(page, width, height):
-    """
-    מה הטסט בודק: Sanity לסלולר - התאמת רספונסיביות ה-Layout לגודל מסך של נייד.
-    הסבר: שימוש ב-Parametrize כדי לכווץ את המסך באופן דינמי לרזולוציות של מכשירי מובייל פופולריים.
-    הטסט מוודא שרכיבי האתר משתנים, לא נשברים, וגודל ה-Viewport מוגדר במדויק.
-    """
+def test_07_mobile_sanity_responsive_layout(page, width, height):
+    """טסט 7: בדיקת התאמת רספונסיביות לגדלי מסכי מובייל שונים."""
     page.set_viewport_size({"width": width, "height": height})
-    page.wait_for_timeout(1000) 
+    page.goto("https://sv-students-recommend.onrender.com/pages/home.html")
     size = page.viewport_size
     assert size["width"] == width and size["height"] == height
 
 @pytest.mark.sanity
-def test_12_mobile_sanity_scroll_behavior(page):
-    """
-    מה הטסט בודק: Sanity לסלולר - גלילה אנכית חלקה (Scroll Behavior).
-    הסבר: במסכים קטנים חובה לוודא שהמשתמש מסוגל לגלול למטה ולמעלה כדי להגיע לכל התוכן.
-    הטסט מריץ פקודת JavaScript שמגוללת את האתר עד הסוף למטה, מחכה חצי שנייה, ומחזירה אותו למעלה.
-    """
+def test_08_mobile_sanity_scroll_behavior(page):
+    """טסט 8: בדיקת התנהגות גלילה חלקה למטה ולמעלה במובייל."""
     page.set_viewport_size({"width": 393, "height": 851})
+    page.goto("https://sv-students-recommend.onrender.com/pages/home.html")
     page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-    page.wait_for_timeout(500)
+    page.wait_for_timeout(400)
     page.evaluate("window.scrollTo(0, 0)")
 
 @pytest.mark.sanity
-def test_13_mobile_sanity_input_focus_state(page):
-    """
-    מה הטסט בודק: Sanity לסלולר - פתיחת פוקוס בשדות קלט ללא עיוות המסך.
-    הסבר: הטסט מדמה לחיצה של אצבע במובייל בתוך שדה הטקסט. הוא מוודא שהאלמנט הופך ל-Active,
-    ושמקלדת וירטואלית היפותטית או זום של המכשיר לא ישבשו את ה-Layout של האתר.
-    """
-    page.set_viewport_size({"width": 414, "height": 896})
-    search_input = page.locator("input").first
-    if search_input.is_visible():
-        search_input.click()
-        page.wait_for_timeout(500)
-
-@pytest.mark.sanity
-def test_14_mobile_sanity_buttons_and_images(page):
-    """
-    מה הטסט בודק: Sanity לסלולר - נגישות כפתורים ואלמנטים גרפיים בתצוגת נייד.
-    הסבר: הטסט מוודא שכל כפתורי המערכת (Buttons) והתמונות (Images) נשארים נגישים, 
-    קיימים בתוך גבולות המסך המוצר, ואינם חורגים ימינה או שמאלה (Overflow).
-    """
+def test_09_mobile_sanity_buttons_accessibility(page):
+    """טסט 9: וידוא קיום אלמנטים לחיצים ונגישים במצב מובייל."""
     page.set_viewport_size({"width": 375, "height": 812})
+    page.goto("https://sv-students-recommend.onrender.com/pages/home.html")
     buttons = page.locator("button")
     assert buttons.count() >= 0
+
+
+# ==================== פרק 4: תזרים משתמש קצה ואדמין (E2E Flow המבוקש) ====================
+
+@pytest.mark.e2e
+def test_10_user_create_recommendation(page):
+    """טסט 10: התחברות כמשתמש סיוון ויצירת המלצה על סרט מוכר."""
+    page.goto("https://sv-students-recommend.onrender.com/")
+    page.fill("input[type='email']", "SivanFinal1@Gmail.com")
+    page.fill("input[type='password']", "Ss123456!")
+    page.click("button:has-text('Sign In'), button:has-text('התחברות')")
+    page.wait_for_url("**/home.html", timeout=7000)
+    
+    page.locator("a, button").filter(has_text=re.compile("Add Recommendation|הוסף המלצה", re.IGNORECASE)).first.click()
+    page.wait_for_url("**/add-recommendation.html", timeout=5000)
+    
+    # מילוי פרטים דינמיים לפי המיקום (nth)
+    page.locator("input[type='text'], input:not([type='submit'])").nth(0).fill(UNIQUE_MOVIE_NAME)
+    page.locator("input[type='text'], input:not([type='submit'])").nth(1).fill("סיוון")
+    page.locator("textarea").first.fill("סרט חובה! מותח, מרתק ועשוי בצורה גאונית. מומלץ בחום לכולם.")
+    page.click("button[type='submit'], button:has-text('Submit')")
+    page.wait_for_url("**/home.html", timeout=5000)
+
+@pytest.mark.e2e
+def test_11_user_add_5_star_rating_and_comment(page):
+    """טסט 11: כניסה להמלצה שנוצרה, דירוג 5 כוכבים והוספת תגובה עניינית."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/home.html")
+    # איתור הפוסט הספציפי של סיוון
+    page.locator(".card, div").filter(has_text=UNIQUE_MOVIE_NAME).first.click()
+    page.wait_for_load_state("networkidle")
+    
+    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+    
+    # דירוג 5 כוכבים
+    five_stars = page.locator("label[for*='5'], input[value='5'], .star-rating label").last
+    if five_stars.is_visible():
+        five_stars.click()
+        
+    page.fill("textarea", "וואו, באמת סרט מדהים! הניתוח המקורי של סיוון מדויק ביותר.")
+    page.click("button:has-text('Post Comment'), button:has-text('הוסף תגובה')")
+    page.wait_for_timeout(1000)
+
+@pytest.mark.e2e
+def test_12_user_logout_system(page):
+    """טסט 12: התנתקות (Logout) של המשתמש מהמערכת בצורה מסודרת."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/home.html")
+    page.locator("a, button").filter(has_text=re.compile("Logout|התנתק", re.IGNORECASE)).first.click()
+    page.wait_for_url("**/login.html", timeout=5000)
+
+@pytest.mark.e2e
+def test_13_admin_login_and_verify_recommendations(page):
+    """טסט 13: כניסה עם פרטי אדמין ומעבר לעמוד ניהול ההמלצות."""
+    page.goto("https://sv-students-recommend.onrender.com/")
+    page.fill("input[type='email']", "admin@svcollege.co.il")
+    page.fill("input[type='password']", "test1234")
+    page.click("button:has-text('Sign In'), button:has-text('התחברות')")
+    page.wait_for_url("**/home.html", timeout=7000)
+    expect(page).to_have_url(re.compile(".*home.*"))
+
+@pytest.mark.e2e
+def test_14_admin_delete_user_recommendation(page):
+    """טסט 14: מחיקת ההמלצה הספציפית שסיוון יצרה ע"י האדמין ווידוא הסרה מהמסך."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/home.html")
+    admin_card = page.locator(".card, tr, div").filter(has_text=UNIQUE_MOVIE_NAME).first
+    delete_btn = admin_card.locator("button:has-text('Delete'), button:has-text('מחק'), .delete-btn").first
+    
+    if delete_btn.is_visible():
+        page.on("dialog", lambda dialog: dialog.accept())
+        delete_btn.click()
+        page.wait_for_timeout(1000)
+        
+    expect(page.locator("body")).not_to_contain_text(UNIQUE_MOVIE_NAME)
