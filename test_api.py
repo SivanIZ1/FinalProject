@@ -36,7 +36,7 @@ def test_5_login_wrong_email():
 
 def test_6_create_recommendation_missing_fields():
     """#המלצה שלא מילאו את כל השדות - שליחת מידע חסר לשרת וציפייה שהקוד ייכשל"""
-    headers = {"Authorization": "Bearer invalid_token_for_error_handling_test"}
-    incomplete_payload = {"title": "כותרת בלבד ללא תוכן וקטגוריה"}
-    response = requests.post(f"{SERVER_URL}/recommendations", json=incomplete_payload, headers=headers)
-    assert response.status_code != 200, "Expected server to reject incomplete recommendation blueprint"
+    headers = {"Authorization": "Bearer fake_token"}
+    payload = {"title": "", "description": "Missing title field"}
+    response = requests.post(f"{SERVER_URL}/recommendations", json=payload, headers=headers)
+    assert response.status_code != 200, "Expected server to reject incomplete form submission"

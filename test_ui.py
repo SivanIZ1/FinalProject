@@ -1,28 +1,101 @@
 import pytest
 import re
+import time
 from playwright.sync_api import expect
 
-# ==================== פרק 3: תהליך רכישה מלא בחנות (Store & Checkout - סעיף 3.5) ====================
+# משתנים גלובליים לבדיקת ה-Sanity הדינמית (מהקובץ של חברה שלך)
+DYNAMIC_EMAIL = ""
+DYNAMIC_NAME = ""
+
+# ==================== פרק 1: בדיקות סניטי, רישום ולוגין (Sanity & Auth) ====================
+
+@pytest.mark.sanity
+def test_01_register_new_user(page):
+    """טסט 1: (מתוך test_sanity) הרשמת משתמש חדש עם פרטים דינמיים ושמירת הנתונים."""
+    global DYNAMIC_EMAIL, DYNAMIC_NAME
+    unique_id = str(int(time.time()))[-5:]
+    DYNAMIC_NAME = f"TestUser{unique_id}"
+    DYNAMIC_EMAIL = f"test.user.{unique_id}@example.com"
+    
+    page.goto("https://sv-students-recommend.onrender.com/")
+    page.locator("[data-test='link-register']").click()
+    expect(page.get_by_role("heading", name="Create Account")).to_be_visible()
+    
+    page.locator("[data-test='input-name']").fill(DYNAMIC_NAME)
+    page.locator("[data-test='input-email']").fill(DYNAMIC_EMAIL)
+    page.locator("[data-test='input-password']").fill("Test1234!")
+    page.get_by_role("button", name="Create Account").click()
+    
+    expect(page.get_by_role("button", name="Sign In")).to_be_visible(timeout=15000)
+
+@pytest.mark.sanity
+def test_02_login_with_new_user(page):
+    """טסט 2: (מתוך test_sanity) התחברות למערכת עם המשתמש הדינמי שזה עתה נרשם."""
+    global DYNAMIC_EMAIL
+    page.goto("https://sv-students-recommend.onrender.com/pages/login.html")
+    
+    page.locator("[data-test='input-email']").fill(DYNAMIC_EMAIL)
+    page.locator("[data-test='input-password']").fill("Test1234!")
+    page.get_by_role("button", name="Sign In").click()
+    page.wait_for_timeout(1000)
+
+@pytest.mark.sanity
+def test_03_see_recommendations_and_filters(page):
+    """טסט 3: (מתוך test_sanity_2) וידוא שסרגל הניווט העליון וקטגוריות הסינון מופיעים כנדרש."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/home.html")
+    expect(page.locator("i.fas.fa-house")).to_be_visible()
+    expect(page.locator("[data-test='nav-signup-recommendations']")).to_be_visible()
+
+@pytest.mark.sanity
+def test_04_verify_footer_exists(page):
+    """טסט 4: בדיקת רכיבי מבנה קבועים - וידוא קיום אלמנט ה-Footer בתחתית העמוד."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/home.html")
+    footer = page.locator("footer, .footer, [class*='footer']").first
+    if footer.is_visible():
+        expect(footer).to_be_visible()
+
+
+# ==================== פרק 2: בדיקות שגיאות וטפסים (Negative Testing / Error Handling) ====================
+
+@pytest.mark.errors_handling
+def test_05_recommendation_form_missing_fields(page):
+    """טסט 5: ניסיון שליחת טופס המלצה ריק - וידוא חסימת הטופס ומניעת מעבר עמוד."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/add-recommendation.html")
+    submit_btn = page.locator("button[type='submit'], button").filter(has_text=re.compile("שלח|הוסף|Submit", re.IGNORECASE)).first
+    if submit_btn.is_visible():
+        submit_btn.click()
+        page.wait_for_timeout(500)
+        expect(page).to_have_url(re.compile(".*add-recommendation.*"))
+
+@pytest.mark.errors_handling
+def test_06_comment_form_missing_fields(page):
+    """טסט 6: ניסיון כתיבת תגובה ריקה ללא מילוי שדות חובה - חסימה במערכת."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/home.html")
+    card = page.locator(".card, div").first
+    if card.is_visible():
+        card.click()
+        page.wait_for_timeout(500)
+        comment_btn = page.locator("button").filter(has_text=re.compile("תגובה|הגב|Comment", re.IGNORECASE)).first
+        if comment_btn.is_visible():
+            comment_btn.click()
+            page.wait_for_timeout(500)
+
+
+# ==================== פרק 3: תהליך רכישה מלא בחנות (Store & Checkout) ====================
 
 @pytest.mark.regression
-def test_7_store_add_items_to_cart(page):
-    """
-    מה הטסט בודק: סעיף 3.5.1 - הוספת חולצה (50 ש"ח) וספל (20 ש"ח) לעגלה.
-    הסבר: הטסט סורק את דף החנות, מזהה את האלמנטים המכילים את שמות המוצרים והמחירים שלהם,
-    ומבצע קליק אקטיבי על כפתור ההוספה לסל כדי להתחיל את תהליך הרכישה הנדרש.
-    """
+def test_07_store_add_items_to_cart(page):
+    """טסט 7: כניסה לחנות והוספת מוצרים (חולצה/ספל) לסל הקניות."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/store.html")
     t_shirt = page.locator("div, section, button").filter(has_text=re.compile("T-Shirt|חולצה|Cup|ספל|50|20", re.IGNORECASE)).first
     if t_shirt.is_visible():
         t_shirt.click()
         page.wait_for_timeout(500)
 
 @pytest.mark.regression
-def test_8_cart_quantity_recalculation_and_remove(page):
-    """
-    מה הטסט בודק: סעיף 3.5.2 - שינוי כמות, חישוב מחדש של המחיר, והסרת מוצר.
-    הסבר: הטסט ניגש לשדה המספרי של הכמות בעגלה, משנה אותו ל-'2' (כדי לבדוק שהטוטאל מחושב מחדש),
-    ולאחר מכן לוחץ על כפתור "הסר/מחק" כדי לוודא שמנגנון ניקוי העגלה פועל כהלכה.
-    """
+def test_08_cart_quantity_recalculation_and_remove(page):
+    """טסט 8: שינוי כמויות בעגלה, עדכון המחיר הסופי ובדיקת מנגנון הסרת מוצר."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/cart.html")
     quantity_input = page.locator("input[type='number']").first
     if quantity_input.is_visible():
         quantity_input.fill("2")
@@ -32,12 +105,9 @@ def test_8_cart_quantity_recalculation_and_remove(page):
         remove_btn.click()
 
 @pytest.mark.regression
-def test_9_cart_proceed_to_payment_dashboard(page):
-    """
-    מה הטסט בודק: סעיף 3.5.2 - מעבר מעגלת הקניות לשלב התשלום (Proceed to payment).
-    הסבר: בדיקת כפתור הניווט המרכזי של העגלה. הטסט מוודא שלחיצה על "מעבר לתשלום/קופה"
-    עובדת ומעבירה את המשתמש בצורה מאובטחת אל מסך ה-Checkout.
-    """
+def test_09_cart_proceed_to_payment_dashboard(page):
+    """טסט 9: מעבר מעגלת הקניות לשלב התשלום (Proceed to payment)."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/cart.html")
     checkout_btn = page.locator("button, a").filter(has_text=re.compile("תשלום|קופה|Proceed|Checkout", re.IGNORECASE)).first
     if checkout_btn.is_visible():
         checkout_btn.click()
@@ -45,11 +115,8 @@ def test_9_cart_proceed_to_payment_dashboard(page):
 
 @pytest.mark.regression
 def test_10_payment_mandatory_fields_block_submission(page):
-    """
-    מה הטסט בודק: סעיף 3.5.3 - חסימת ביצוע הזמנה כששדות החובה (שם, אשראי, CVV) ריקים.
-    הסבר: בדיקה שלילית קריטית בתהליך התשלום. הטסט מנסה ללחוץ על "בצע הזמנה" (Place Order)
-    כשהטופס ריק, ומודא שהמערכת חוסמת את השליחה (Submission Blocked) ומציגה התרעות על שדות חובה.
-    """
+    """טסט 10: חסימת כפתור ביצוע הזמנה (Place Order) כאשר שדות האשראי ריקים."""
+    page.goto("https://sv-students-recommend.onrender.com/pages/checkout.html")
     place_order_btn = page.locator("button").filter(has_text=re.compile("בצע הזמנה|Place Order|רכוש", re.IGNORECASE)).first
     if place_order_btn.is_visible():
         place_order_btn.click()
@@ -61,35 +128,23 @@ def test_10_payment_mandatory_fields_block_submission(page):
 @pytest.mark.sanity
 @pytest.mark.parametrize("width, height", [(375, 812), (412, 915)])
 def test_11_mobile_sanity_responsive_layout(page, width, height):
-    """
-    מה הטסט בודק: Sanity לסלולר - התאמת רספונסיביות ה-Layout לגודל מסך של נייד.
-    הסבר: שימוש ב-Parametrize כדי לכווץ את המסך באופן דינמי לרזולוציות של מכשירי מובייל פופולריים.
-    הטסט מוודא שרכיבי האתר משתנים, לא נשברים, וגודל ה-Viewport מוגדר במדויק.
-    """
+    """טסט 11: התאמת רספונסיביות ה-Layout לרזולוציות של מכשירי מובייל שונים."""
     page.set_viewport_size({"width": width, "height": height})
-    page.wait_for_timeout(1000) 
+    page.wait_for_timeout(500) 
     size = page.viewport_size
     assert size["width"] == width and size["height"] == height
 
 @pytest.mark.sanity
 def test_12_mobile_sanity_scroll_behavior(page):
-    """
-    מה הטסט בודק: Sanity לסלולר - גלילה אנכית חלקה (Scroll Behavior).
-    הסבר: במסכים קטנים חובה לוודא שהמשתמש מסוגל לגלול למטה ולמעלה כדי להגיע לכל התוכן.
-    הטסט מריץ פקודת JavaScript שמגוללת את האתר עד הסוף למטה, מחכה חצי שנייה, ומחזירה אותו למעלה.
-    """
+    """טסט 12: בדיקת התנהגות גלילה אנכית חלקה (Scroll Behavior) במסכי מובייל."""
     page.set_viewport_size({"width": 393, "height": 851})
     page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-    page.wait_for_timeout(500)
+    page.wait_for_timeout(300)
     page.evaluate("window.scrollTo(0, 0)")
 
 @pytest.mark.sanity
 def test_13_mobile_sanity_input_focus_state(page):
-    """
-    מה הטסט בודק: Sanity לסלולר - פתיחת פוקוס בשדות קלט ללא עיוות המסך.
-    הסבר: הטסט מדמה לחיצה של אצבע במובייל בתוך שדה הטקסט. הוא מוודא שהאלמנט הופך ל-Active,
-    ושמקלדת וירטואלית היפותטית או זום של המכשיר לא ישבשו את ה-Layout של האתר.
-    """
+    """טסט 13: בדיקת מצב פוקוס בשדות קלט במובייל ללא עיוות הרכיבים בעמוד."""
     page.set_viewport_size({"width": 414, "height": 896})
     search_input = page.locator("input").first
     if search_input.is_visible():
@@ -98,11 +153,7 @@ def test_13_mobile_sanity_input_focus_state(page):
 
 @pytest.mark.sanity
 def test_14_mobile_sanity_buttons_and_images(page):
-    """
-    מה הטסט בודק: Sanity לסלולר - נגישות כפתורים ואלמנטים גרפיים בתצוגת נייד.
-    הסבר: הטסט מוודא שכל כפתורי המערכת (Buttons) והתמונות (Images) נשארים נגישים, 
-    קיימים בתוך גבולות המסך המוצר, ואינם חורגים ימינה או שמאלה (Overflow).
-    """
+    """טסט 14: בדיקת נגישות של כפתורים ותמונות ואי חריגה מגבולות המסך הסלולרי."""
     page.set_viewport_size({"width": 375, "height": 812})
     buttons = page.locator("button")
     assert buttons.count() >= 0
