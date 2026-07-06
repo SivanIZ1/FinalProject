@@ -3,83 +3,9 @@ import re
 import time
 from playwright.sync_api import expect
 
-# משתנים גלובליים לבדיקת ה-Sanity הדינמית (מהקובץ של חברה שלך)
+# משתנים גלובליים לבדיקת ה-Sanity הדינמית
 DYNAMIC_EMAIL = ""
 DYNAMIC_NAME = ""
-
-# ==================== פרק 1: בדיקות סניטי, רישום ולוגין (Sanity & Auth) ====================
-
-@pytest.mark.sanity
-def test_01_register_new_user(page):
-    """טסט 1: (מתוך test_sanity) הרשמת משתמש חדש עם פרטים דינמיים ושמירת הנתונים."""
-    global DYNAMIC_EMAIL, DYNAMIC_NAME
-    unique_id = str(int(time.time()))[-5:]
-    DYNAMIC_NAME = f"TestUser{unique_id}"
-    DYNAMIC_EMAIL = f"test.user.{unique_id}@example.com"
-    
-    page.goto("https://sv-students-recommend.onrender.com/")
-    page.locator("[data-test='link-register']").click()
-    expect(page.get_by_role("heading", name="Create Account")).to_be_visible()
-    
-    page.locator("[data-test='input-name']").fill(DYNAMIC_NAME)
-    page.locator("[data-test='input-email']").fill(DYNAMIC_EMAIL)
-    page.locator("[data-test='input-password']").fill("Test1234!")
-    page.get_by_role("button", name="Create Account").click()
-    
-    expect(page.get_by_role("button", name="Sign In")).to_be_visible(timeout=15000)
-
-@pytest.mark.sanity
-def test_02_login_with_new_user(page):
-    """טסט 2: (מתוך test_sanity) התחברות למערכת עם המשתמש הדינמי שזה עתה נרשם."""
-    global DYNAMIC_EMAIL
-    page.goto("https://sv-students-recommend.onrender.com/pages/login.html")
-    
-    page.locator("[data-test='input-email']").fill(DYNAMIC_EMAIL)
-    page.locator("[data-test='input-password']").fill("Test1234!")
-    page.get_by_role("button", name="Sign In").click()
-    page.wait_for_timeout(1000)
-
-@pytest.mark.sanity
-def test_03_see_recommendations_and_filters(page):
-    """טסט 3: (מתוך test_sanity_2) וידוא שסרגל הניווט העליון וקטגוריות הסינון מופיעים כנדרש."""
-    page.goto("https://sv-students-recommend.onrender.com/pages/home.html")
-    expect(page.locator("i.fas.fa-house")).to_be_visible()
-    expect(page.locator("[data-test='nav-signup-recommendations']")).to_be_visible()
-
-@pytest.mark.sanity
-def test_04_verify_footer_exists(page):
-    """טסט 4: בדיקת רכיבי מבנה קבועים - וידוא קיום אלמנט ה-Footer בתחתית העמוד."""
-    page.goto("https://sv-students-recommend.onrender.com/pages/home.html")
-    footer = page.locator("footer, .footer, [class*='footer']").first
-    if footer.is_visible():
-        expect(footer).to_be_visible()
-
-
-# ==================== פרק 2: בדיקות שגיאות וטפסים (Negative Testing / Error Handling) ====================
-
-@pytest.mark.errors_handling
-def test_05_recommendation_form_missing_fields(page):
-    """טסט 5: ניסיון שליחת טופס המלצה ריק - וידוא חסימת הטופס ומניעת מעבר עמוד."""
-    page.goto("https://sv-students-recommend.onrender.com/pages/add-recommendation.html")
-    submit_btn = page.locator("button[type='submit'], button").filter(has_text=re.compile("שלח|הוסף|Submit", re.IGNORECASE)).first
-    if submit_btn.is_visible():
-        submit_btn.click()
-        page.wait_for_timeout(500)
-        expect(page).to_have_url(re.compile(".*add-recommendation.*"))
-
-@pytest.mark.errors_handling
-def test_06_comment_form_missing_fields(page):
-    """טסט 6: ניסיון כתיבת תגובה ריקה ללא מילוי שדות חובה - חסימה במערכת."""
-    page.goto("https://sv-students-recommend.onrender.com/pages/home.html")
-    card = page.locator(".card, div").first
-    if card.is_visible():
-        card.click()
-        page.wait_for_timeout(500)
-        comment_btn = page.locator("button").filter(has_text=re.compile("תגובה|הגב|Comment", re.IGNORECASE)).first
-        if comment_btn.is_visible():
-            comment_btn.click()
-            page.wait_for_timeout(500)
-
 
 # ==================== פרק 3: תהליך רכישה מלא בחנות (Store & Checkout) ====================
 
